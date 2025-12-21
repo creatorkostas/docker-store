@@ -19,5 +19,7 @@ export default async function AppFromPage({ params }: { params: Promise<{ id: st
     notFound();
   }
 
-  return <AppDetails app={app} />;
+  const variants = apps.filter(a => a.name === app.name);
+
+  return <AppDetails app={app} variants={variants} sources={sources} />;
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { App } from "@/lib/types"
+import { App, Source } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -8,13 +8,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Download, Server, Loader2, FileCode, Settings2, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import yaml from 'js-yaml'
 
-export function AppDetails({ app }: { app: App }) {
+export function AppDetails({ app, variants, sources }: { app: App, variants?: App[], sources?: Source[] }) {
+  const router = useRouter()
   const [downloading, setDownloading] = useState(false)
   const [content, setContent] = useState(app.dockerComposeContent || "")
   const [loadingContent, setLoadingContent] = useState(!app.dockerComposeContent && !!app.dockerComposePath)
@@ -80,6 +83,22 @@ export function AppDetails({ app }: { app: App }) {
     }
   }
 
+  const getSourceName = (sourceId: string) => {
+    const source = sources?.find(s => s.id === sourceId)
+    if (!source) return "Unknown Source"
+    if (source.name) return source.name
+    try {
+        const url = new URL(source.url)
+        if (source.type === 'zip') {
+            const parts = source.url.split('/')
+            return parts[parts.length - 1]
+        }
+        return url.hostname
+    } catch {
+        return source.url
+    }
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -106,14 +125,33 @@ export function AppDetails({ app }: { app: App }) {
         </div>
 
         <div className="md:col-span-2 space-y-6">
-          <div className="md:hidden">
-            <h1 className="text-4xl font-bold mb-2">{app.name}</h1>
-            <p className="text-muted-foreground whitespace-pre-wrap mb-4">
-               {app.description || "No description provided."}
-            </p>
-          </div>
-          <div className="hidden md:block">
-             <h1 className="text-4xl font-bold">{app.name}</h1>
+          <div className="flex flex-col gap-4">
+             <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-4xl font-bold hidden md:block">{app.name}</h1>
+                  <h1 className="text-3xl font-bold md:hidden">{app.name}</h1>
+                </div>
+                {variants && variants.length > 1 && (
+                  <div className="flex items-center gap-2">
+                     <Label className="whitespace-nowrap text-xs text-muted-foreground">Source:</Label>
+                     <Select value={app.id} onValueChange={(val) => router.push(`/app/${encodeURIComponent(val)}`)}>
+                       <SelectTrigger className="w-[180px]">
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {variants.map(v => (
+                           <SelectItem key={v.id} value={v.id}>
+                             {getSourceName(v.sourceId)}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                  </div>
+                )}
+             </div>
+             <p className="text-muted-foreground whitespace-pre-wrap md:hidden">
+                {app.description || "No description provided."}
+             </p>
           </div>
 
           <Card>
@@ -217,10 +255,7 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
     } catch (e) {
       setError("Unable to parse YAML configuration. Please use the Raw YAML editor.")
     }
-  }, [content]) // Note: This might cause re-renders if onChange updates content, but we need to sync.
-  // Actually, if we update content via onChange, this effect runs again. 
-  // We need to ensure that the new content produces a stable object to avoid flickering if possible.
-  // But since we replace the whole object on edit, it's fine.
+  }, [content]) 
 
   const updateService = (serviceName: string, key: string, value: any) => {
     if (!parsed || !parsed.services) return
@@ -228,7 +263,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
     if (newParsed.services[serviceName]) {
       newParsed.services[serviceName][key] = value
       const newYaml = yaml.dump(newParsed)
-      // This will trigger the effect above, but that's okay.
       onChange(newYaml)
     }
   }

@@ -30,6 +30,21 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
     return matchesSearch && matchesSource
   })
 
+  // Deduplicate by name if 'all' sources selected
+  const displayApps: App[] = []
+  const seenNames = new Set<string>()
+  
+  for (const app of filteredApps) {
+    if (selectedSource === 'all') {
+      if (!seenNames.has(app.name)) {
+        seenNames.add(app.name)
+        displayApps.push(app)
+      }
+    } else {
+      displayApps.push(app)
+    }
+  }
+
   const handleUpdate = () => {
     router.refresh()
   }
@@ -98,7 +113,7 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredApps.map(app => {
+          {displayApps.map(app => {
             const source = sources.find(s => s.id === app.sourceId)
             return (
               <AppCard 

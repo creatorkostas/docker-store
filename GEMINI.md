@@ -55,3 +55,4 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
   - **Raw YAML:** Full text editor for advanced customization.
 - **Yacht Template Support:** Fully compatible with Yacht JSON templates, automatically converting them to Docker Compose configurations.
 - **Settings:** Configure default values for Yacht template variables (e.g., `!PUID`, `!config`) via a dedicated settings page.
+- **App Deduplication:** Groups identical apps from different sources in the main view, allowing users to select the preferred source on the details page.
