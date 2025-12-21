@@ -4,7 +4,9 @@
     "url": "https://casaos-appstore.paodayag.dev/coolstore.zip",
     "type": "zip",
     "status": "success",
-    "lastUpdated": "2025-12-21T10:40:43.755Z"
+    "lastUpdated": "2025-12-21T12:46:23.393Z",
+    "isYacht": false,
+    "isCasaOS": true
   },
   {
     "id": "8ab77dbd-94b0-4854-a848-1fb797a52eab",

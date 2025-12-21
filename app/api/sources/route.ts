@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSources, addSource, removeSource } from '@/lib/sources';
+import { getSources, addSource, removeSource, updateSource } from '@/lib/sources';
 import { processSource } from '@/lib/processor';
 import { Source } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,10 +9,51 @@ export async function GET() {
   return NextResponse.json(sources);
 }
 
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, url, isYacht, isCasaOS } = body;
+
+    if (!id || !url) {
+        return NextResponse.json({ error: 'ID and URL are required' }, { status: 400 });
+    }
+
+    const sources = getSources();
+    const existingSource = sources.find(s => s.id === id);
+    
+    if (!existingSource) {
+        return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    const type = url.endsWith('.zip') ? 'zip' : 'json';
+    const updatedSource: Source = {
+        ...existingSource,
+        url,
+        type,
+        isYacht: !!isYacht,
+        isCasaOS: !!isCasaOS,
+        status: 'pending',
+        lastUpdated: new Date().toISOString()
+    };
+
+    updateSource(updatedSource);
+
+    try {
+        await processSource(updatedSource);
+        return NextResponse.json(updatedSource);
+    } catch (error: any) {
+        return NextResponse.json({ ...updatedSource, status: 'error', error: error.message }, { status: 201 });
+    }
+
+  } catch (error) {
+      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url, isYacht } = body;
+    const { url, isYacht, isCasaOS } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -24,6 +65,7 @@ export async function POST(request: Request) {
       url,
       type,
       isYacht: !!isYacht,
+      isCasaOS: !!isCasaOS,
       status: 'pending',
       lastUpdated: new Date().toISOString()
     };

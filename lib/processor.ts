@@ -20,8 +20,6 @@ export async function processSource(source: Source): Promise<void> {
       await processZipSource(source);
     } else {
       // For JSON, we just verify we can fetch it. 
-      // The actual app parsing happens on request or we could cache it here.
-      // For now, let's just mark it as updated.
       const res = await fetch(source.url);
       if (!res.ok) throw new Error(`Failed to fetch JSON: ${res.statusText}`);
     }
@@ -54,12 +52,10 @@ async function processZipSource(source: Source) {
 
   const sourceDir = path.join(STORAGE_DIR, source.id);
   
-  // Clean up old directory if exists
   if (fs.existsSync(sourceDir)) {
     fs.rmSync(sourceDir, { recursive: true, force: true });
   }
   
-  // Create temp dir for extraction
   const tempDir = path.join(STORAGE_DIR, `${source.id}_temp`);
   if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
@@ -67,11 +63,9 @@ async function processZipSource(source: Source) {
   zip.extractAllTo(tempDir, true);
 
   // Find "Apps" folder
-  // It could be at root, or nested inside a top-level folder (common in GitHub archives)
   let appsDir = path.join(tempDir, 'Apps');
   
   if (!fs.existsSync(appsDir)) {
-    // Search recursively one level deep
     const entries = fs.readdirSync(tempDir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory()) {
@@ -85,21 +79,18 @@ async function processZipSource(source: Source) {
   }
 
   if (fs.existsSync(appsDir)) {
-    // Move Apps to final location
     fs.mkdirSync(sourceDir, { recursive: true });
     fs.cpSync(appsDir, sourceDir, { recursive: true });
   } else {
     throw new Error('No "Apps" folder found in the ZIP file.');
   }
 
-  // Cleanup temp
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
 export async function getAllApps(sources: Source[]): Promise<App[]> {
   let allApps: App[] = [];
   
-  // Fetch settings once for the batch
   const settings = getSettings();
   const yachtDefaults = settings.yacht;
 
@@ -117,16 +108,94 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
           const appName = dirent.name;
           const appPath = path.join(sourcePath, appName);
           
-          // Look for docker-compose
           const composeFiles = ['docker-compose.yml', 'docker-compose.yaml'];
           let composeFile = composeFiles.find(f => fs.existsSync(path.join(appPath, f)));
           
           if (composeFile) {
-             // Look for icon (png, jpg, svg)
+             const publicPath = `/storage/${source.id}/${appName}`;
+
+             // CasaOS Specific Processing
+             if (source.isCasaOS) {
+                 try {
+                     const content = fs.readFileSync(path.join(appPath, composeFile), 'utf-8');
+                     const parsed: any = yaml.load(content);
+
+                     if (parsed) {
+                         const metadata = parsed['x-casaos'] || {};
+                         
+                         let name = appName;
+                         if (metadata.title) {
+                             name = typeof metadata.title === 'object' ? (metadata.title.en_us || Object.values(metadata.title)[0]) : metadata.title;
+                         }
+                         
+                         let description = undefined;
+                         // Try description, then tagline
+                         const descObj = metadata.description || metadata.tagline;
+                         if (descObj) {
+                            description = typeof descObj === 'object' ? (descObj.en_us || Object.values(descObj)[0]) : descObj;
+                         }
+
+                         let iconUrl = undefined;
+                         if (metadata.icon) {
+                             if (metadata.icon.startsWith('http')) {
+                                 iconUrl = metadata.icon;
+                             } else {
+                                 // Ensure no leading slash in metadata.icon if we append
+                                 const cleanIcon = metadata.icon.startsWith('/') ? metadata.icon.slice(1) : metadata.icon;
+                                 iconUrl = `${publicPath}/${cleanIcon}`;
+                             }
+                         }
+
+                         let screenshots: string[] = [];
+                         if (metadata.screenshot_link && Array.isArray(metadata.screenshot_link)) {
+                              screenshots = metadata.screenshot_link.map((s: string) => {
+                                  if (s.startsWith('http')) return s;
+                                  const cleanS = s.startsWith('/') ? s.slice(1) : s;
+                                  return `${publicPath}/${cleanS}`;
+                              });
+                         }
+
+                         // Clean YAML and normalize volumes
+                         delete parsed['x-casaos'];
+                         if (parsed.services) {
+                             for (const svc in parsed.services) {
+                                 const service = parsed.services[svc];
+                                 
+                                 // Convert long volume syntax to short syntax
+                                 if (service.volumes && Array.isArray(service.volumes)) {
+                                     service.volumes = service.volumes.map((v: any) => {
+                                         if (typeof v === 'object' && v.type === 'bind' && v.source && v.target) {
+                                             return `${v.source}:${v.target}`;
+                                         }
+                                         return v;
+                                     });
+                                 }
+
+                                 delete service['x-casaos'];
+                             }
+                         }
+                         const cleanedYaml = yaml.dump(parsed);
+
+                         allApps.push({
+                             id: `${source.id}-${appName}`,
+                             sourceId: source.id,
+                             name: name || appName,
+                             description: description,
+                             iconUrl: iconUrl,
+                             screenshots: screenshots,
+                             dockerComposeContent: cleanedYaml,
+                         });
+                         continue; 
+                     }
+                 } catch (e) {
+                     console.error(`Error processing CasaOS app ${appName}`, e);
+                 }
+             }
+
+             // Standard ZIP Processing
              const files = fs.readdirSync(appPath);
              const iconFile = files.find(f => /\.(png|jpg|jpeg|svg|webp)$/i.test(f));
              
-             // Look for README
              const readmeFile = files.find(f => /^readme(\.(md|txt|markdown))?$/i.test(f));
              let description: string | undefined;
              if (readmeFile) {
@@ -137,7 +206,6 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                }
              }
 
-             // Look for screenshots
              const screenshotFiles = files.filter(f => /^screenshot-\d+\.(png|jpg|jpeg|webp)$/i.test(f));
              screenshotFiles.sort((a, b) => {
                 const numA = parseInt(a.match(/(\d+)/)?.[0] || '0');
@@ -145,20 +213,14 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                 return numA - numB;
              });
              
-             // Base URL for serving static files
-             // We need to serve these via Next.js public folder.
-             // Since we save to public/storage, they are accessible at /storage/...
-             const publicPath = `/storage/${source.id}/${appName}`;
-
              allApps.push({
                id: `${source.id}-${appName}`,
                sourceId: source.id,
-               name: appName, // Could try to read name from compose labels or a metadata file if exists
+               name: appName,
                description,
                iconUrl: iconFile ? `${publicPath}/${iconFile}` : undefined,
                screenshots: screenshotFiles.map(f => `${publicPath}/${f}`),
                dockerComposePath: `${publicPath}/${composeFile}`,
-               // We can also read the content now if needed, but path is good for download
              });
           }
         }
@@ -191,12 +253,10 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                        service.volumes = item.volumes.map((v: any) => {
                            let hostPath = v.bind;
                            
-                           // Check against Yacht settings
                            if (hostPath && typeof hostPath === 'string') {
                                if (yachtDefaults[hostPath]) {
                                    hostPath = yachtDefaults[hostPath];
                                } else if (hostPath.startsWith('!')) {
-                                   // Fallback if not in settings but starts with !
                                    hostPath = './' + hostPath.substring(1);
                                }
                            }
@@ -209,14 +269,10 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                    if (item.env) {
                        service.environment = {};
                        item.env.forEach((e: any) => {
-                           // Use default if available
                            let val = e.default || "";
-                           
-                           // Check if default value is a variable we have a setting for
                            if (val && typeof val === 'string' && yachtDefaults[val]) {
                                val = yachtDefaults[val];
                            }
-                           
                            service.environment[e.name] = val;
                        });
                    }
@@ -239,12 +295,12 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                }));
            } else if (Array.isArray(data)) {
              allApps = allApps.concat(data.map((item: any) => ({
-               id: uuidv4(), // or item.id
+               id: uuidv4(),
                sourceId: source.id,
                name: item.name || 'Unknown',
                description: item.description,
                iconUrl: item.icon || item.image,
-               dockerComposeContent: item.docker_compose || item.compose, // Assuming content is provided directly
+               dockerComposeContent: item.docker_compose || item.compose, 
              })));
            }
         }

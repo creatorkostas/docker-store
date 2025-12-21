@@ -6,6 +6,7 @@ export interface Source {
   type: SourceType;
   name?: string;
   isYacht?: boolean;
+  isCasaOS?: boolean;
   lastUpdated?: string;
   status?: 'pending' | 'success' | 'error';
   error?: string;

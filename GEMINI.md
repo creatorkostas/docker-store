@@ -51,8 +51,10 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
 - **Auto-Description:** Automatically populates app description from `README.md` file in the app folder.
 - **Screenshots:** Displays screenshots (named `screenshot-<number>.png`) from the app folder in the details view.
 - **Editor:** Built-in editor to customize `docker-compose.yml` with two modes:
-  - **Easy Setup:** UI-based form to configure environment variables and ports.
+  - **Easy Setup:** Comprehensive UI form to configure Image, Container Name, Restart Policy, Privileged Mode, Volumes, Ports, and Environment Variables.
   - **Raw YAML:** Full text editor for advanced customization.
 - **Yacht Template Support:** Fully compatible with Yacht JSON templates, automatically converting them to Docker Compose configurations.
+- **CasaOS App Support:** Automatically processes CasaOS app ZIPs (checked via toggle), extracting metadata, cleaning `x-casaos` extensions, and normalizing volume definitions to standard short syntax for compatibility.
+- **Source Management:** Add, remove, and edit sources (JSON or ZIP). Toggle Yacht or CasaOS processing modes for existing sources.
 - **Settings:** Configure default values for Yacht template variables (e.g., `!PUID`, `!config`) via a dedicated settings page.
 - **App Deduplication:** Groups identical apps from different sources in the main view, allowing users to select the preferred source on the details page.

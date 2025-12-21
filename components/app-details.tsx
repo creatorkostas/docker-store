@@ -7,9 +7,10 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Download, Server, Loader2, FileCode, Settings2, AlertCircle } from "lucide-react"
+import { ArrowLeft, Download, Server, Loader2, FileCode, Settings2, AlertCircle, Trash2, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -282,18 +283,86 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
   }
 
   return (
-    <ScrollArea className="h-[400px] pr-4">
+    <ScrollArea className="h-[600px] pr-4">
       <div className="space-y-6">
         {Object.entries(parsed.services).map(([serviceName, service]: [string, any]) => (
-          <div key={serviceName} className="border rounded-lg p-4 space-y-4">
+          <div key={serviceName} className="border rounded-lg p-4 space-y-6">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500" />
               {serviceName}
             </h3>
             
+            {/* Image */}
+            <div className="grid gap-2">
+              <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Image</Label>
+              <Input 
+                value={service.image || ""} 
+                onChange={(e) => updateService(serviceName, 'image', e.target.value)}
+                className="font-mono text-sm"
+              />
+            </div>
+
+            {/* Container Name */}
+            <div className="grid gap-2">
+              <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Container Name</Label>
+              <Input 
+                value={service.container_name || ""} 
+                onChange={(e) => updateService(serviceName, 'container_name', e.target.value)}
+                className="font-mono text-sm"
+                placeholder={serviceName}
+              />
+            </div>
+
+            {/* Restart Policy */}
+            <div className="grid gap-2">
+              <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Restart Policy</Label>
+              <Select 
+                value={service.restart || "no"} 
+                onValueChange={(val) => updateService(serviceName, 'restart', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no">No</SelectItem>
+                  <SelectItem value="always">Always</SelectItem>
+                  <SelectItem value="on-failure">On Failure</SelectItem>
+                  <SelectItem value="unless-stopped">Unless Stopped</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Privileged */}
+            <div className="flex items-center gap-2">
+               <Switch 
+                 checked={!!service.privileged} 
+                 onCheckedChange={(c) => updateService(serviceName, 'privileged', c)} 
+               />
+               <Label className="text-sm font-medium">Privileged Mode</Label>
+            </div>
+
             {/* Environment Variables */}
             <div className="space-y-3">
-              <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Environment Variables</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Environment Variables</Label>
+                <Button size="sm" variant="ghost" onClick={() => {
+                   // Add new env var
+                   const currentEnv = service.environment || {};
+                   // We prefer object format if possible, or convert array to object
+                   let newEnv = { ...currentEnv };
+                   if (Array.isArray(currentEnv)) {
+                       newEnv = currentEnv.reduce((acc: any, curr: string) => {
+                           const [k, v] = curr.split('=');
+                           acc[k] = v;
+                           return acc;
+                       }, {});
+                   }
+                   newEnv["NEW_VAR"] = "";
+                   updateService(serviceName, 'environment', newEnv);
+                }}>
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
               {service.environment ? (
                 <div className="grid gap-3">
                   {Array.isArray(service.environment) ? (
@@ -301,7 +370,15 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                        const [key, val] = env.split('=')
                        return (
                          <div key={idx} className="flex gap-2 items-center">
-                           <Input value={key} disabled className="w-1/3 bg-muted font-mono text-xs" />
+                           <Input 
+                             value={key} 
+                             onChange={(e) => {
+                                const newEnv = [...service.environment];
+                                newEnv[idx] = `${e.target.value}=${val || ''}`;
+                                updateService(serviceName, 'environment', newEnv);
+                             }}
+                             className="w-1/3 bg-muted font-mono text-xs" 
+                           />
                            <span className="text-muted-foreground">=</span>
                            <Input 
                               value={val || ""} 
@@ -312,13 +389,28 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                               }}
                               className="font-mono text-xs"
                            />
+                           <Button size="icon" variant="ghost" onClick={() => {
+                               const newEnv = service.environment.filter((_: any, i: number) => i !== idx);
+                               updateService(serviceName, 'environment', newEnv);
+                           }}>
+                             <Trash2 className="h-4 w-4 text-destructive" />
+                           </Button>
                          </div>
                        )
                     })
                   ) : (
                     Object.entries(service.environment).map(([key, val]) => (
                       <div key={key} className="flex gap-2 items-center">
-                         <Input value={key} disabled className="w-1/3 bg-muted font-mono text-xs" />
+                         <Input 
+                           value={key} 
+                           onChange={(e) => {
+                              const newEnv = { ...service.environment };
+                              delete newEnv[key];
+                              newEnv[e.target.value] = val;
+                              updateService(serviceName, 'environment', newEnv);
+                           }}
+                           className="w-1/3 bg-muted font-mono text-xs" 
+                         />
                          <span className="text-muted-foreground">=</span>
                          <Input 
                             value={String(val)} 
@@ -328,6 +420,13 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                             }}
                             className="font-mono text-xs"
                          />
+                         <Button size="icon" variant="ghost" onClick={() => {
+                             const newEnv = { ...service.environment };
+                             delete newEnv[key];
+                             updateService(serviceName, 'environment', newEnv);
+                         }}>
+                           <Trash2 className="h-4 w-4 text-destructive" />
+                         </Button>
                       </div>
                     ))
                   )}
@@ -339,7 +438,15 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
 
             {/* Ports */}
             <div className="space-y-3">
-              <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Port Mappings</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Port Mappings</Label>
+                <Button size="sm" variant="ghost" onClick={() => {
+                    const newPorts = [...(service.ports || []), "80:80"];
+                    updateService(serviceName, 'ports', newPorts);
+                }}>
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
               {service.ports ? (
                  <div className="grid gap-3">
                    {service.ports.map((port: string | number, idx: number) => {
@@ -367,8 +474,22 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                          <span className="text-muted-foreground">:</span>
                          <div className="flex-1 flex items-center gap-2">
                            <Label className="text-xs text-muted-foreground">Container</Label>
-                           <Input value={containerPort} disabled className="bg-muted font-mono text-xs" />
+                           <Input 
+                             value={containerPort} 
+                             onChange={(e) => {
+                               const newPorts = [...service.ports]
+                               newPorts[idx] = `${hostPort}:${e.target.value}`
+                               updateService(serviceName, 'ports', newPorts)
+                             }}
+                             className="font-mono text-xs bg-background" 
+                           />
                          </div>
+                         <Button size="icon" variant="ghost" onClick={() => {
+                             const newPorts = service.ports.filter((_: any, i: number) => i !== idx);
+                             updateService(serviceName, 'ports', newPorts);
+                         }}>
+                           <Trash2 className="h-4 w-4 text-destructive" />
+                         </Button>
                        </div>
                      )
                    })}
@@ -377,6 +498,71 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                 <p className="text-sm text-muted-foreground italic">No ports exposed.</p>
               )}
             </div>
+
+            {/* Volumes */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Volumes</Label>
+                <Button size="sm" variant="ghost" onClick={() => {
+                    const newVols = [...(service.volumes || []), "./data:/data"];
+                    updateService(serviceName, 'volumes', newVols);
+                }}>
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
+              {service.volumes ? (
+                 <div className="grid gap-3">
+                   {service.volumes.map((vol: string | any, idx: number) => {
+                     // Attempt to handle string format
+                     const volStr = typeof vol === 'string' ? vol : JSON.stringify(vol);
+                     const isComplex = typeof vol !== 'string';
+                     
+                     if (isComplex) {
+                         return <div key={idx} className="text-xs text-muted-foreground italic">Complex volume definition (Raw edit required)</div>;
+                     }
+
+                     const parts = volStr.split(':');
+                     const hostPath = parts[0];
+                     const containerPath = parts.slice(1).join(':'); // Handle windows paths? simple split for now
+
+                     return (
+                       <div key={idx} className="flex gap-2 items-center">
+                         <Input 
+                           value={hostPath}
+                           onChange={(e) => {
+                               const newVols = [...service.volumes];
+                               newVols[idx] = `${e.target.value}:${containerPath}`;
+                               updateService(serviceName, 'volumes', newVols);
+                           }} 
+                           placeholder="Host Path" 
+                           className="flex-1 font-mono text-xs" 
+                         />
+                         <span className="text-muted-foreground">:</span>
+                         <Input 
+                           value={containerPath} 
+                           onChange={(e) => {
+                               const newVols = [...service.volumes];
+                               newVols[idx] = `${hostPath}:${e.target.value}`;
+                               updateService(serviceName, 'volumes', newVols);
+                           }} 
+                           placeholder="Container Path" 
+                           className="flex-1 font-mono text-xs" 
+                         />
+                         <Button size="icon" variant="ghost" onClick={() => {
+                             const newVols = service.volumes.filter((_: any, i: number) => i !== idx);
+                             updateService(serviceName, 'volumes', newVols);
+                         }}>
+                           <Trash2 className="h-4 w-4 text-destructive" />
+                         </Button>
+                       </div>
+                     )
+                   })}
+                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No volumes defined.</p>
+              )}
+            </div>
+
           </div>
         ))}
       </div>
