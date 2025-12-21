@@ -6,7 +6,9 @@ import { App, Source } from "@/lib/types"
 import { AppCard } from "./app-card"
 import { SourceManager } from "./source-manager"
 import { Input } from "./ui/input"
-import { Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Search, Settings } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface StoreInterfaceProps {
@@ -52,7 +54,14 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <h1 className="text-3xl font-bold">Docker App Store</h1>
-          <SourceManager onUpdate={handleUpdate} />
+          <div className="flex items-center gap-2">
+             <Button variant="outline" size="icon" asChild>
+               <Link href="/settings">
+                 <Settings className="h-4 w-4" />
+               </Link>
+             </Button>
+             <SourceManager onUpdate={handleUpdate} />
+          </div>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4">

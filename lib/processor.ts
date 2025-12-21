@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import yaml from 'js-yaml';
 import { Source, App } from './types';
 import { updateSource } from './sources';
+import { getSettings } from './settings';
 
 const STORAGE_DIR = path.join(process.cwd(), 'public', 'storage');
 
@@ -97,6 +98,10 @@ async function processZipSource(source: Source) {
 
 export async function getAllApps(sources: Source[]): Promise<App[]> {
   let allApps: App[] = [];
+  
+  // Fetch settings once for the batch
+  const settings = getSettings();
+  const yachtDefaults = settings.yacht;
 
   for (const source of sources) {
     if (source.status !== 'success') continue;
@@ -185,9 +190,17 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                    if (item.volumes) {
                        service.volumes = item.volumes.map((v: any) => {
                            let hostPath = v.bind;
-                           if (hostPath && typeof hostPath === 'string' && hostPath.startsWith('!')) {
-                               hostPath = './' + hostPath.substring(1);
+                           
+                           // Check against Yacht settings
+                           if (hostPath && typeof hostPath === 'string') {
+                               if (yachtDefaults[hostPath]) {
+                                   hostPath = yachtDefaults[hostPath];
+                               } else if (hostPath.startsWith('!')) {
+                                   // Fallback if not in settings but starts with !
+                                   hostPath = './' + hostPath.substring(1);
+                               }
                            }
+                           
                            return `${hostPath}:${v.container}`;
                        });
                    }
@@ -196,8 +209,15 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
                    if (item.env) {
                        service.environment = {};
                        item.env.forEach((e: any) => {
-                           // Use default if available, otherwise name (empty)
-                           service.environment[e.name] = e.default || "";
+                           // Use default if available
+                           let val = e.default || "";
+                           
+                           // Check if default value is a variable we have a setting for
+                           if (val && typeof val === 'string' && yachtDefaults[val]) {
+                               val = yachtDefaults[val];
+                           }
+                           
+                           service.environment[e.name] = val;
                        });
                    }
 

@@ -151,7 +151,7 @@ export function SourceManager({ onUpdate }: { onUpdate: () => void }) {
                 <div className="space-y-4">
                   {sources.map((source) => (
                     <div key={source.id} className="flex items-center justify-between space-x-4 border-b pb-4 last:border-0 last:pb-0">
-                      <div className="space-y-1 overflow-hidden">
+                      <div className="space-y-1 overflow-hidden min-w-0 flex-1">
                         <p className="text-sm font-medium leading-none truncate" title={source.url}>
                           {source.url}
                         </p>

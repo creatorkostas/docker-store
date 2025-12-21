@@ -54,3 +54,4 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
   - **Easy Setup:** UI-based form to configure environment variables and ports.
   - **Raw YAML:** Full text editor for advanced customization.
 - **Yacht Template Support:** Fully compatible with Yacht JSON templates, automatically converting them to Docker Compose configurations.
+- **Settings:** Configure default values for Yacht template variables (e.g., `!PUID`, `!config`) via a dedicated settings page.
