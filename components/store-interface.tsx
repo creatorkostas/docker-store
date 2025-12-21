@@ -8,8 +8,9 @@ import { SourceManager } from "./source-manager"
 import { Input } from "./ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Search, Settings } from "lucide-react"
+import { Search, Settings, LogIn, LogOut } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 interface StoreInterfaceProps {
   apps: App[]
@@ -17,6 +18,7 @@ interface StoreInterfaceProps {
 }
 
 export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
+  const { data: session } = useSession()
   const router = useRouter()
   const [search, setSearch] = useState("")
   const [selectedSource, setSelectedSource] = useState<string>("all")
@@ -77,12 +79,23 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <h1 className="text-3xl font-bold">Docker App Store</h1>
           <div className="flex items-center gap-2">
-             <Button variant="outline" size="icon" asChild>
-               <Link href="/settings">
-                 <Settings className="h-4 w-4" />
-               </Link>
-             </Button>
-             <SourceManager onUpdate={handleUpdate} />
+             {session ? (
+               <>
+                 <Button variant="outline" size="icon" asChild>
+                   <Link href="/settings">
+                     <Settings className="h-4 w-4" />
+                   </Link>
+                 </Button>
+                 <SourceManager onUpdate={handleUpdate} />
+                 <Button variant="ghost" size="icon" onClick={() => signOut()} title="Logout">
+                   <LogOut className="h-4 w-4" />
+                 </Button>
+               </>
+             ) : (
+               <Button variant="outline" onClick={() => signIn()} className="gap-2">
+                 <LogIn className="h-4 w-4" /> Login
+               </Button>
+             )}
           </div>
         </div>
         

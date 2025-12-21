@@ -57,4 +57,6 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
 - **CasaOS App Support:** Automatically processes CasaOS app ZIPs (checked via toggle), extracting metadata, cleaning `x-casaos` extensions, and normalizing volume definitions to standard short syntax for compatibility.
 - **Source Management:** Add, remove, and edit sources (JSON or ZIP). Toggle Yacht or CasaOS processing modes for existing sources.
 - **Settings:** Configure default values for Yacht template variables (e.g., `!PUID`, `!config`) via a dedicated settings page.
+- **Authentication:** User login via GitHub OAuth. Guest users can browse and download locally, while logged-in users can save to server and manage sources/settings.
+  - **Debug Mode:** If `DEBUG=true` is set in `.env`, a "Debug Login" option allows bypassing OAuth for testing.
 - **App Deduplication:** Groups identical apps from different sources in the main view, allowing users to select the preferred source on the details page.

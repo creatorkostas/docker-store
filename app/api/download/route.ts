@@ -2,9 +2,16 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { App } from '@/lib/types';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session && process.env.DEBUG !== "true") {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const app: App = await request.json();
     const downloadPath = process.env.SERVER_DOWNLOAD_PATH;
 
@@ -12,25 +19,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server download path not configured' }, { status: 500 });
     }
 
-    // Ensure download directory exists
     if (!fs.existsSync(downloadPath)) {
       fs.mkdirSync(downloadPath, { recursive: true });
     }
 
-    const targetDir = path.join(downloadPath, app.name);
+    const safeName = app.name.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const appBaseDir = path.join(downloadPath, safeName);
+    
+    if (!fs.existsSync(appBaseDir)) {
+      fs.mkdirSync(appBaseDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const targetDir = path.join(appBaseDir, timestamp);
+    
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
     const targetFile = path.join(targetDir, 'docker-compose.yml');
+    const metadataFile = path.join(targetDir, 'app-details.json');
 
     let content = app.dockerComposeContent;
 
     if (!content && app.dockerComposePath) {
-      // It's a file on the server (from ZIP extraction)
-      // app.dockerComposePath is a URL path like /storage/..., we need local file path
-      // logic in processor.ts set it to /storage/..., which maps to public/storage/...
-      // so we construct local path:
       const relativePath = app.dockerComposePath.startsWith('/') ? app.dockerComposePath.slice(1) : app.dockerComposePath;
       const localPath = path.join(process.cwd(), 'public', relativePath);
       
@@ -44,8 +56,9 @@ export async function POST(request: Request) {
     }
 
     fs.writeFileSync(targetFile, content);
+    fs.writeFileSync(metadataFile, JSON.stringify(app, null, 2));
 
-    return NextResponse.json({ success: true, path: targetFile });
+    return NextResponse.json({ success: true, path: targetDir });
 
   } catch (error: any) {
     console.error('Download error:', error);

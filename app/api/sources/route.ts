@@ -3,6 +3,8 @@ import { getSources, addSource, removeSource, updateSource } from '@/lib/sources
 import { processSource } from '@/lib/processor';
 import { Source } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   const sources = getSources();
@@ -11,6 +13,11 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session && process.env.DEBUG !== "true") {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, url, isYacht, isCasaOS } = body;
 
@@ -52,6 +59,11 @@ export async function PUT(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session && process.env.DEBUG !== "true") {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { url, isYacht, isCasaOS } = body;
 
@@ -72,14 +84,10 @@ export async function POST(request: Request) {
 
     addSource(newSource);
     
-    // Process immediately
-    // In a real app, might want to use a queue, but await is fine here
     try {
       await processSource(newSource);
       return NextResponse.json(newSource);
     } catch (error: any) {
-      // Even if processing fails, we added the source. 
-      // The frontend should show the error state.
       return NextResponse.json({ ...newSource, status: 'error', error: error.message }, { status: 201 });
     }
 
@@ -89,6 +97,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    const session = await getServerSession(authOptions);
+    if (!session && process.env.DEBUG !== "true") {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     

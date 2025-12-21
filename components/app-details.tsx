@@ -15,9 +15,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import yaml from 'js-yaml'
 
 export function AppDetails({ app, variants, sources }: { app: App, variants?: App[], sources?: Source[] }) {
+  const { data: session } = useSession()
   const router = useRouter()
   const [downloading, setDownloading] = useState(false)
   const [content, setContent] = useState(app.dockerComposeContent || "")
@@ -201,15 +203,17 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
               )}
 
               <div className="pt-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid gap-4 ${session ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <Button onClick={handleLocalDownload} variant="outline" className="w-full">
                     <Download className="mr-2 h-4 w-4" />
                     Download
                   </Button>
-                  <Button onClick={handleServerDownload} disabled={downloading} className="w-full">
-                    {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
-                    Save to Server
-                  </Button>
+                  {session && (
+                    <Button onClick={handleServerDownload} disabled={downloading} className="w-full">
+                      {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
+                      Save to Server
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
