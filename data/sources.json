@@ -13,7 +13,9 @@
     "url": "https://github.com/bigbeartechworld/big-bear-casaos/archive/refs/heads/master.zip",
     "type": "zip",
     "status": "success",
-    "lastUpdated": "2025-12-21T10:42:53.855Z"
+    "lastUpdated": "2025-12-21T13:05:28.832Z",
+    "isYacht": false,
+    "isCasaOS": true
   },
   {
     "id": "17406aa0-7f9c-4b76-8029-cbe96e2a2f02",

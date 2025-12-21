@@ -64,6 +64,13 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
     }
   }
 
+  // Calculate total counts for filter
+  const totalUniqueApps = new Set(apps.map(a => a.name)).size
+  const sourceCounts = apps.reduce((acc, app) => {
+    acc[app.sourceId] = (acc[app.sourceId] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col gap-6 mb-8">
@@ -95,10 +102,10 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
               <SelectValue placeholder="Filter by Source" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="all">All Sources ({totalUniqueApps})</SelectItem>
               {sources.map(source => (
                 <SelectItem key={source.id} value={source.id}>
-                  {getSourceName(source)}
+                  {getSourceName(source)} ({sourceCounts[source.id] || 0})
                 </SelectItem>
               ))}
             </SelectContent>
