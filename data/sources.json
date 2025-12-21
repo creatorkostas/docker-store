@@ -1,0 +1,16 @@
+[
+  {
+    "id": "2ffd69ef-e59a-4810-89ca-de44694e2068",
+    "url": "https://casaos-appstore.paodayag.dev/coolstore.zip",
+    "type": "zip",
+    "status": "success",
+    "lastUpdated": "2025-12-21T10:40:43.755Z"
+  },
+  {
+    "id": "8ab77dbd-94b0-4854-a848-1fb797a52eab",
+    "url": "https://github.com/bigbeartechworld/big-bear-casaos/archive/refs/heads/master.zip",
+    "type": "zip",
+    "status": "success",
+    "lastUpdated": "2025-12-21T10:42:53.855Z"
+  }
+]
