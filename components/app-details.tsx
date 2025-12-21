@@ -10,13 +10,15 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Download, Server, Loader2, FileCode, Settings2, AlertCircle, Trash2, Plus } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Download, Server, Loader2, FileCode, Settings2, AlertCircle, Trash2, Plus, Ship } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import yaml from 'js-yaml'
+import { generateTrueNASValues } from "@/lib/truenas"
 
 export function AppDetails({ app, variants, sources }: { app: App, variants?: App[], sources?: Source[] }) {
   const { data: session } = useSession()
@@ -171,12 +173,15 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
                   </div>
               ) : (
                 <Tabs defaultValue="form" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="form">
                       <Settings2 className="w-4 h-4 mr-2" /> Easy Setup
                     </TabsTrigger>
                     <TabsTrigger value="code">
                       <FileCode className="w-4 h-4 mr-2" /> Raw YAML
+                    </TabsTrigger>
+                    <TabsTrigger value="truenas">
+                      <Ship className="w-4 h-4 mr-2" /> TrueNAS
                     </TabsTrigger>
                   </TabsList>
                   
@@ -195,9 +200,13 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
                         spellCheck={false}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Edits here will be reflected in the Easy Setup tab (if valid YAML).
+                        Edits here will be reflected in the Easy Setup and TrueNAS tabs.
                       </p>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="truenas" className="mt-4">
+                    <TrueNASTemplate content={content} appName={app.name} />
                   </TabsContent>
                 </Tabs>
               )}
@@ -244,6 +253,46 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
   )
 }
 
+function TrueNASTemplate({ content, appName }: { content: string, appName: string }) {
+  const [truenasYaml, setTruenasYaml] = useState("")
+
+  useEffect(() => {
+    setTruenasYaml(generateTrueNASValues(content))
+  }, [content])
+
+  const handleDownload = () => {
+    const blob = new Blob([truenasYaml], { type: 'text/yaml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${appName}-truenas-values.yaml`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("TrueNAS template downloaded")
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>TrueNAS SCALE Values Template</Label>
+        <Button size="sm" variant="outline" onClick={handleDownload}>
+          <Download className="mr-2 h-4 w-4" /> Download YAML
+        </Button>
+      </div>
+      <Textarea
+        readOnly
+        value={truenasYaml}
+        className="font-mono text-xs h-[400px] bg-slate-900 text-slate-100"
+      />
+      <p className="text-xs text-muted-foreground">
+        This template is generated from the current Docker Compose configuration and follows the standard TrueNAS SCALE App structure.
+      </p>
+    </div>
+  )
+}
+
 function ComposeForm({ content, onChange }: { content: string, onChange: (s: string) => void }) {
   const [parsed, setParsed] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -267,6 +316,31 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
     const newParsed = JSON.parse(JSON.stringify(parsed))
     if (newParsed.services[serviceName]) {
       newParsed.services[serviceName][key] = value
+      
+      // Auto-manage top-level volumes for named volumes
+      const namedVolumes = new Set<string>();
+      Object.values(newParsed.services).forEach((svc: any) => {
+          if (svc.volumes && Array.isArray(svc.volumes)) {
+              svc.volumes.forEach((v: any) => {
+                  if (typeof v === 'string') {
+                      const hostPart = v.split(':')[0];
+                      if (hostPart && !hostPart.startsWith('.') && !hostPart.startsWith('/') && !hostPart.startsWith('~')) {
+                          namedVolumes.add(hostPart);
+                      }
+                  }
+              });
+          }
+      });
+
+      if (namedVolumes.size > 0) {
+          newParsed.volumes = newParsed.volumes || {};
+          namedVolumes.forEach(v => {
+              if (!newParsed.volumes[v]) {
+                  newParsed.volumes[v] = {};
+              }
+          });
+      }
+
       const newYaml = yaml.dump(newParsed)
       onChange(newYaml)
     }
@@ -296,7 +370,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               {serviceName}
             </h3>
             
-            {/* Image */}
             <div className="grid gap-2">
               <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Image</Label>
               <Input 
@@ -306,7 +379,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               />
             </div>
 
-            {/* Container Name */}
             <div className="grid gap-2">
               <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Container Name</Label>
               <Input 
@@ -317,7 +389,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               />
             </div>
 
-            {/* Restart Policy */}
             <div className="grid gap-2">
               <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Restart Policy</Label>
               <Select 
@@ -336,7 +407,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               </Select>
             </div>
 
-            {/* Privileged */}
             <div className="flex items-center gap-2">
                <Switch 
                  checked={!!service.privileged} 
@@ -345,14 +415,11 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                <Label className="text-sm font-medium">Privileged Mode</Label>
             </div>
 
-            {/* Environment Variables */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Environment Variables</Label>
                 <Button size="sm" variant="ghost" onClick={() => {
-                   // Add new env var
                    const currentEnv = service.environment || {};
-                   // We prefer object format if possible, or convert array to object
                    let newEnv = { ...currentEnv };
                    if (Array.isArray(currentEnv)) {
                        newEnv = currentEnv.reduce((acc: any, curr: string) => {
@@ -440,7 +507,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               )}
             </div>
 
-            {/* Ports */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Port Mappings</Label>
@@ -455,7 +521,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                  <div className="grid gap-3">
                    {service.ports.map((port: string | number, idx: number) => {
                      const portStr = String(port)
-                     // Handle "80:80" or "80"
                      const parts = portStr.split(':')
                      const hostPort = parts.length > 1 ? parts[0] : ""
                      const containerPort = parts.length > 1 ? parts[1] : parts[0]
@@ -471,7 +536,7 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                                newPorts[idx] = `${e.target.value}:${containerPort}`
                                updateService(serviceName, 'ports', newPorts)
                              }}
-                             className="font-mono text-xs"
+                             className="font-mono text-sm"
                              placeholder="Random"
                            />
                          </div>
@@ -485,7 +550,7 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                                newPorts[idx] = `${hostPort}:${e.target.value}`
                                updateService(serviceName, 'ports', newPorts)
                              }}
-                             className="font-mono text-xs bg-background" 
+                             className="font-mono text-sm bg-background" 
                            />
                          </div>
                          <Button size="icon" variant="ghost" onClick={() => {
@@ -503,7 +568,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               )}
             </div>
 
-            {/* Volumes */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Volumes</Label>
@@ -517,7 +581,6 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
               {service.volumes ? (
                  <div className="grid gap-3">
                    {service.volumes.map((vol: string | any, idx: number) => {
-                     // Attempt to handle string format
                      const volStr = typeof vol === 'string' ? vol : JSON.stringify(vol);
                      const isComplex = typeof vol !== 'string';
                      
@@ -526,38 +589,59 @@ function ComposeForm({ content, onChange }: { content: string, onChange: (s: str
                      }
 
                      const parts = volStr.split(':');
-                     const hostPath = parts[0];
-                     const containerPath = parts.slice(1).join(':'); // Handle windows paths? simple split for now
+                     const hostPart = parts[0];
+                     const containerPath = parts.slice(1).join(':');
+                     const isNamed = Boolean(hostPart && !hostPart.startsWith('.') && !hostPart.startsWith('/') && !hostPart.startsWith('~'));
 
                      return (
-                       <div key={idx} className="flex gap-2 items-center">
-                         <Input 
-                           value={hostPath}
-                           onChange={(e) => {
-                               const newVols = [...service.volumes];
-                               newVols[idx] = `${e.target.value}:${containerPath}`;
+                       <div key={idx} className="flex flex-col gap-2 p-2 border rounded bg-muted/5">
+                         <div className="flex gap-2 items-center">
+                           <Input 
+                             value={hostPart}
+                             onChange={(e) => {
+                                 const newVols = [...service.volumes];
+                                 newVols[idx] = `${e.target.value}:${containerPath}`;
+                                 updateService(serviceName, 'volumes', newVols);
+                             }} 
+                             placeholder={isNamed ? "Volume Name" : "Host Path"} 
+                             className="flex-1 font-mono text-sm" 
+                           />
+                           <span className="text-muted-foreground">:</span>
+                           <Input 
+                             value={containerPath} 
+                             onChange={(e) => {
+                                 const newVols = [...service.volumes];
+                                 newVols[idx] = `${hostPart}:${e.target.value}`;
+                                 updateService(serviceName, 'volumes', newVols);
+                             }} 
+                             placeholder="Container Path" 
+                             className="flex-1 font-mono text-sm" 
+                           />
+                           <Button size="icon" variant="ghost" onClick={() => {
+                               const newVols = service.volumes.filter((_: any, i: number) => i !== idx);
                                updateService(serviceName, 'volumes', newVols);
-                           }} 
-                           placeholder="Host Path" 
-                           className="flex-1 font-mono text-xs" 
-                         />
-                         <span className="text-muted-foreground">:</span>
-                         <Input 
-                           value={containerPath} 
-                           onChange={(e) => {
-                               const newVols = [...service.volumes];
-                               newVols[idx] = `${hostPath}:${e.target.value}`;
-                               updateService(serviceName, 'volumes', newVols);
-                           }} 
-                           placeholder="Container Path" 
-                           className="flex-1 font-mono text-xs" 
-                         />
-                         <Button size="icon" variant="ghost" onClick={() => {
-                             const newVols = service.volumes.filter((_: any, i: number) => i !== idx);
-                             updateService(serviceName, 'volumes', newVols);
-                         }}>
-                           <Trash2 className="h-4 w-4 text-destructive" />
-                         </Button>
+                           }}>
+                             <Trash2 className="h-4 w-4 text-destructive" />
+                           </Button>
+                         </div>
+                         <div className="flex items-center space-x-2">
+                            <Checkbox 
+                                id={`named-${idx}`} 
+                                checked={isNamed} 
+                                onCheckedChange={(checked) => {
+                                    const newVols = [...service.volumes];
+                                    let newHost = hostPart;
+                                    if (checked && (newHost.startsWith('.') || newHost.startsWith('/'))) {
+                                        newHost = newHost.replace(/^[\.\/]+/, '');
+                                    } else if (!checked && !newHost.startsWith('.') && !newHost.startsWith('/')) {
+                                        newHost = `./${newHost}`;
+                                    }
+                                    newVols[idx] = `${newHost}:${containerPath}`;
+                                    updateService(serviceName, 'volumes', newVols);
+                                }}
+                            />
+                            <Label htmlFor={`named-${idx}`} className="text-xs text-muted-foreground">Is Docker Volume (Named)</Label>
+                         </div>
                        </div>
                      )
                    })}
