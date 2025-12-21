@@ -15,12 +15,12 @@ export function AppCard({ app, sourceName }: AppCardProps) {
   return (
     <Card className="flex flex-col h-full hover:shadow-lg transition-shadow">
       <CardHeader className="p-0">
-        <div className="aspect-video w-full relative bg-muted flex items-center justify-center overflow-hidden rounded-t-lg">
+        <div className="aspect-video w-full relative bg-white flex items-center justify-center overflow-hidden rounded-t-lg">
           {app.iconUrl ? (
             <img 
               src={app.iconUrl} 
               alt={app.name} 
-              className="object-cover w-full h-full"
+              className="object-contain w-full h-full p-4"
             />
           ) : (
             <FileCode className="h-16 w-16 text-muted-foreground" />

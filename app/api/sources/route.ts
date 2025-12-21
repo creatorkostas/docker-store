@@ -12,7 +12,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url } = body;
+    const { url, isYacht } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       id: uuidv4(),
       url,
       type,
+      isYacht: !!isYacht,
       status: 'pending',
       lastUpdated: new Date().toISOString()
     };

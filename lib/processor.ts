@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import { v4 as uuidv4 } from 'uuid';
+import yaml from 'js-yaml';
 import { Source, App } from './types';
 import { updateSource } from './sources';
 
@@ -162,8 +163,61 @@ export async function getAllApps(sources: Source[]): Promise<App[]> {
         const res = await fetch(source.url);
         if (res.ok) {
            const data = await res.json();
-           // Assume generic structure or array of objects
-           if (Array.isArray(data)) {
+           
+           if (source.isYacht && Array.isArray(data)) {
+               allApps = allApps.concat(data.map((item: any) => {
+                   // Generate Docker Compose
+                   const service: any = {
+                       image: item.image,
+                       restart: item.restart_policy || 'unless-stopped',
+                   }
+                   
+                   // Ports
+                   if (item.ports) {
+                       service.ports = item.ports.map((p: any) => {
+                           if (typeof p === 'string') return p;
+                           if (typeof p === 'object') return Object.values(p)[0];
+                           return null;
+                       }).filter(Boolean);
+                   }
+                   
+                   // Volumes
+                   if (item.volumes) {
+                       service.volumes = item.volumes.map((v: any) => {
+                           let hostPath = v.bind;
+                           if (hostPath && typeof hostPath === 'string' && hostPath.startsWith('!')) {
+                               hostPath = './' + hostPath.substring(1);
+                           }
+                           return `${hostPath}:${v.container}`;
+                       });
+                   }
+                   
+                   // Env
+                   if (item.env) {
+                       service.environment = {};
+                       item.env.forEach((e: any) => {
+                           // Use default if available, otherwise name (empty)
+                           service.environment[e.name] = e.default || "";
+                       });
+                   }
+
+                   const composeObj = {
+                       version: '3',
+                       services: {
+                           [item.name]: service
+                       }
+                   };
+
+                   return {
+                       id: `${source.id}-${item.name}`,
+                       sourceId: source.id,
+                       name: item.title || item.name,
+                       description: item.description,
+                       iconUrl: item.logo,
+                       dockerComposeContent: yaml.dump(composeObj)
+                   };
+               }));
+           } else if (Array.isArray(data)) {
              allApps = allApps.concat(data.map((item: any) => ({
                id: uuidv4(), // or item.id
                sourceId: source.id,

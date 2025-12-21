@@ -50,3 +50,7 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
 - **Filtering:** Filter apps by source or search by name.
 - **Auto-Description:** Automatically populates app description from `README.md` file in the app folder.
 - **Screenshots:** Displays screenshots (named `screenshot-<number>.png`) from the app folder in the details view.
+- **Editor:** Built-in editor to customize `docker-compose.yml` with two modes:
+  - **Easy Setup:** UI-based form to configure environment variables and ports.
+  - **Raw YAML:** Full text editor for advanced customization.
+- **Yacht Template Support:** Fully compatible with Yacht JSON templates, automatically converting them to Docker Compose configurations.

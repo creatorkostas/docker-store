@@ -5,6 +5,7 @@ export interface Source {
   url: string;
   type: SourceType;
   name?: string;
+  isYacht?: boolean;
   lastUpdated?: string;
   status?: 'pending' | 'success' | 'error';
   error?: string;
