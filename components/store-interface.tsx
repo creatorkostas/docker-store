@@ -8,7 +8,7 @@ import { SourceManager } from "./source-manager"
 import { Input } from "./ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Search, Settings, LogIn, LogOut } from "lucide-react"
+import { Search, Settings, LogIn, LogOut, LayoutGrid } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession, signIn, signOut } from "next-auth/react"
 
@@ -82,7 +82,12 @@ export function StoreInterface({ apps, sources }: StoreInterfaceProps) {
              {session ? (
                <>
                  <Button variant="outline" size="icon" asChild>
-                   <Link href="/settings">
+                   <Link href="/manage" title="App Management">
+                     <LayoutGrid className="h-4 w-4" />
+                   </Link>
+                 </Button>
+                 <Button variant="outline" size="icon" asChild>
+                   <Link href="/settings" title="Settings">
                      <Settings className="h-4 w-4" />
                    </Link>
                  </Button>

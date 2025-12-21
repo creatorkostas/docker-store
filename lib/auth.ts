@@ -75,7 +75,4 @@ if (process.env.DEBUG === "true") {
 export const authOptions: NextAuthOptions = {
   providers,
   secret: process.env.NEXTAUTH_SECRET || "secret",
-  pages: {
-    signIn: '/auth/signin', // Optional: if you want a custom sign-in page
-  }
 }
