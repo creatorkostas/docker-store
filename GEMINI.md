@@ -60,3 +60,5 @@ It features a **Shadcn UI** frontend and a backend API for managing sources and 
 - **Authentication:** User login via GitHub OAuth. Guest users can browse and download locally, while logged-in users can save to server and manage sources/settings.
   - **Debug Mode:** If `DEBUG=true` is set in `.env`, a "Debug Login" option allows bypassing OAuth for testing.
 - **App Deduplication:** Groups identical apps from different sources in the main view, allowing users to select the preferred source on the details page.
+- **Appearance:** Supports Light, Dark, and System modes, along with multiple color variations (Zinc, Blue, Green, Red, etc.).
+- **Permissions Control:** Option to disable "Save to Server" functionality globally via settings.

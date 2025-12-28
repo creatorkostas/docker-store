@@ -11,5 +11,7 @@
     "!books": "./books",
     "!comics": "./comics",
     "!podcasts": "./podcasts"
-  }
+  },
+  "disableSaveToServer": false,
+  "themeColor": "zinc"
 }

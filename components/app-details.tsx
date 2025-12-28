@@ -26,6 +26,14 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
   const [downloading, setDownloading] = useState(false)
   const [content, setContent] = useState(app.dockerComposeContent || "")
   const [loadingContent, setLoadingContent] = useState(!app.dockerComposeContent && !!app.dockerComposePath)
+  const [settings, setSettings] = useState<any>(null)
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(setSettings)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!app.dockerComposeContent && app.dockerComposePath) {
@@ -212,12 +220,12 @@ export function AppDetails({ app, variants, sources }: { app: App, variants?: Ap
               )}
 
               <div className="pt-4 space-y-4">
-                <div className={`grid gap-4 ${session ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div className={`grid gap-4 ${session && !settings?.disableSaveToServer ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <Button onClick={handleLocalDownload} variant="outline" className="w-full">
                     <Download className="mr-2 h-4 w-4" />
                     Download
                   </Button>
-                  {session && (
+                  {session && !settings?.disableSaveToServer && (
                     <Button onClick={handleServerDownload} disabled={downloading} className="w-full">
                       {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
                       Save to Server

@@ -6,6 +6,8 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 export interface Settings {
   yacht: Record<string, string>;
+  disableSaveToServer: boolean;
+  themeColor: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -21,7 +23,9 @@ const DEFAULT_SETTINGS: Settings = {
     '!books': './books',
     '!comics': './comics',
     '!podcasts': './podcasts'
-  }
+  },
+  disableSaveToServer: false,
+  themeColor: 'zinc'
 };
 
 export function getSettings(): Settings {
@@ -30,9 +34,10 @@ export function getSettings(): Settings {
   }
   try {
     const data = fs.readFileSync(SETTINGS_FILE, 'utf-8');
-    // Deep merge or just top level? Top level is fine for now as we only have one category.
     const parsed = JSON.parse(data);
     return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
         yacht: { ...DEFAULT_SETTINGS.yacht, ...parsed.yacht }
     };
   } catch (error) {
