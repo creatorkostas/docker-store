@@ -1,0 +1,22 @@
+services:
+  docker-store:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docker-store
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - SERVER_DOWNLOAD_PATH=/app/server_downloads
+      - DEBUG=true
+      # Add other environment variables here if needed (e.g. AUTH_SECRET, GITHUB_ID, etc)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./mount_points/data:/app/data
+      - ./mount_points/storage:/app/public/storage
+      - ./mount_points/server_downloads:/app/server_downloads
+
+# Note: Ensure the './mount_points' directory and its subdirectories exist on the host 
+# and have appropriate permissions if you encounter access issues.

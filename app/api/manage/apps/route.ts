@@ -6,9 +6,11 @@ import { authOptions } from "@/lib/auth";
 import { getLatestDeployment } from "@/lib/server-utils";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session && process.env.DEBUG !== "true") {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (process.env.DEBUG !== "true") {
+      const session = await getServerSession(authOptions);
+      if (!session) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
   }
 
   const downloadPath = process.env.SERVER_DOWNLOAD_PATH;

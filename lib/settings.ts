@@ -46,8 +46,19 @@ export function getSettings(): Settings {
 }
 
 export function saveSettings(settings: Settings) {
+  console.log(`Attempting to save settings to: ${SETTINGS_FILE}`);
+  console.log(`Data directory: ${DATA_DIR}`);
+  
   if (!fs.existsSync(DATA_DIR)) {
+    console.log(`Directory does not exist. Creating: ${DATA_DIR}`);
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    console.log(`Successfully wrote to ${SETTINGS_FILE}`);
+  } catch (e: any) {
+    console.error(`Failed to write settings file at ${SETTINGS_FILE}:`, e);
+    throw e;
+  }
 }

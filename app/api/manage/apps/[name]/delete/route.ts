@@ -10,9 +10,11 @@ import { getLatestDeployment } from "@/lib/server-utils";
 const execAsync = promisify(exec);
 
 export async function POST(request: Request, context: { params: Promise<{ name: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session && process.env.DEBUG !== "true") {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (process.env.DEBUG !== "true") {
+      const session = await getServerSession(authOptions);
+      if (!session) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
   }
 
   const { name } = await context.params;
