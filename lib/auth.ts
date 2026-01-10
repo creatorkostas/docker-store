@@ -2,8 +2,20 @@ import { NextAuthOptions } from "next-auth"
 import GithubProvider from "next-auth/providers/github"
 import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
+import AuthentikProvider from "next-auth/providers/authentik"
 
 const providers = []
+
+if (process.env.AUTHENTIK_ID && process.env.AUTHENTIK_SECRET && process.env.AUTHENTIK_ISSUER) {
+  providers.push(
+    AuthentikProvider({
+      name: "Authentik",
+      clientId: process.env.AUTHENTIK_ID,
+      clientSecret: process.env.AUTHENTIK_SECRET,
+      issuer: process.env.AUTHENTIK_ISSUER,
+    })
+  )
+}
 
 if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
   providers.push(
@@ -60,7 +72,8 @@ if (process.env.CUSTOM_PROVIDER_ID && process.env.CUSTOM_PROVIDER_SECRET) {
   }
 }
 
-if (process.env.DEBUG === "true") {
+if (process.env.DEBUG === "true" && process.env.NODE_ENV === "development") {
+  console.warn("⚠️ Debug Login Provider Enabled! Do not use in production.");
   providers.push(
     CredentialsProvider({
       name: "Debug Login",
@@ -72,7 +85,11 @@ if (process.env.DEBUG === "true") {
   )
 }
 
+if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
+    console.error("❌ NEXTAUTH_SECRET is not set in production. Authentication is insecure.");
+}
+
 export const authOptions: NextAuthOptions = {
   providers,
-  secret: process.env.NEXTAUTH_SECRET || "secret",
+  secret: process.env.NEXTAUTH_SECRET,
 }

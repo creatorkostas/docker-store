@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "./providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import { getSettings } from "@/lib/settings";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,6 +47,13 @@ export default function RootLayout({
             <Toaster />
           </Providers>
         </ThemeProvider>
+        {process.env.UMAMI_WEBSITE_ID && process.env.UMAMI_SCRIPT_URL && (
+          <Script
+            defer
+            src={process.env.UMAMI_SCRIPT_URL}
+            data-website-id={process.env.UMAMI_WEBSITE_ID}
+          />
+        )}
       </body>
     </html>
   );

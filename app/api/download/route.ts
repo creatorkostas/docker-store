@@ -45,11 +45,17 @@ export async function POST(request: Request) {
     let content = app.dockerComposeContent;
 
     if (!content && app.dockerComposePath) {
+      const publicDir = path.resolve(path.join(process.cwd(), 'public'));
+      // Construct the absolute path and resolve it to handle '..'
+      // app.dockerComposePath is expected to be a URL path like /storage/..., so we strip leading slash
       const relativePath = app.dockerComposePath.startsWith('/') ? app.dockerComposePath.slice(1) : app.dockerComposePath;
-      const localPath = path.join(process.cwd(), 'public', relativePath);
+      const requestedPath = path.resolve(path.join(publicDir, relativePath));
       
-      if (fs.existsSync(localPath)) {
-        content = fs.readFileSync(localPath, 'utf-8');
+      // Strict check: requestedPath must start with publicDir
+      if (requestedPath.startsWith(publicDir) && fs.existsSync(requestedPath)) {
+        content = fs.readFileSync(requestedPath, 'utf-8');
+      } else {
+        console.warn(`Blocked potential path traversal attempt: ${app.dockerComposePath}`);
       }
     }
 
