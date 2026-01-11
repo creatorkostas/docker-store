@@ -4,15 +4,30 @@ import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import AuthentikProvider from "next-auth/providers/authentik"
 
+// -----------------------------------------------------------------------------
+// SSL Verification Handling for Self-Signed Certificates (e.g., Homelab)
+// -----------------------------------------------------------------------------
+if (process.env.SKIP_SSL_VERIFICATION === "true") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+  console.warn("⚠️  WARNING: SSL Verification skipped! (SKIP_SSL_VERIFICATION=true)")
+}
+
 const providers = []
 
-if (process.env.AUTHENTIK_ID && process.env.AUTHENTIK_SECRET && process.env.AUTHENTIK_ISSUER) {
+// Debugging Environment State
+console.log(`[Auth] Loading providers. DEBUG=${process.env.DEBUG}, NODE_ENV=${process.env.NODE_ENV}`)
+console.log(`[Auth] Env Check: AUTHENTIK_CLIENT_ID=${!!process.env.AUTHENTIK_CLIENT_ID}, AUTHENTIK_ISSUER=${process.env.AUTHENTIK_ISSUER}`);
+
+if (process.env.AUTHENTIK_CLIENT_ID && process.env.AUTHENTIK_CLIENT_SECRET && process.env.AUTHENTIK_ISSUER) {
   providers.push(
     AuthentikProvider({
       name: "Authentik",
-      clientId: process.env.AUTHENTIK_ID,
-      clientSecret: process.env.AUTHENTIK_SECRET,
+      clientId: process.env.AUTHENTIK_CLIENT_ID,
+      clientSecret: process.env.AUTHENTIK_CLIENT_SECRET,
       issuer: process.env.AUTHENTIK_ISSUER,
+      httpOptions: {
+        timeout: 20000,
+      },
     })
   )
 }
@@ -45,6 +60,9 @@ if (process.env.CUSTOM_PROVIDER_ID && process.env.CUSTOM_PROVIDER_SECRET) {
     authorization: { params: { scope: "openid email profile" } },
     idToken: true,
     checks: ["pkce", "state"],
+    httpOptions: {
+      timeout: 10000,
+    },
     profile(profile: any) {
       return {
         id: profile.sub || profile.id,
@@ -72,6 +90,8 @@ if (process.env.CUSTOM_PROVIDER_ID && process.env.CUSTOM_PROVIDER_SECRET) {
   }
 }
 
+console.log("[Auth] Initialized Providers:", providers.map(p => p.name));
+
 if (process.env.DEBUG === "true" && process.env.NODE_ENV === "development") {
   console.warn("⚠️ Debug Login Provider Enabled! Do not use in production.");
   providers.push(
@@ -90,6 +110,7 @@ if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
 }
 
 export const authOptions: NextAuthOptions = {
+  debug: true,
   providers,
   secret: process.env.NEXTAUTH_SECRET,
 }
