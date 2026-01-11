@@ -5,10 +5,36 @@ import { Source } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { isSafeUrl } from "@/lib/utils";
 
 export async function GET() {
   const sources = getSources();
-  return NextResponse.json(sources);
+  let isAuthenticated = false;
+
+  if (process.env.DEBUG === "true") {
+      isAuthenticated = true;
+  } else {
+      const session = await getServerSession(authOptions);
+      if (session) isAuthenticated = true;
+  }
+
+  if (isAuthenticated) {
+      return NextResponse.json(sources);
+  }
+
+  // Sanitize for guests
+  const sanitized = sources.map(s => ({
+      id: s.id,
+      type: s.type,
+      status: s.status,
+      lastUpdated: s.lastUpdated,
+      error: s.error,
+      isYacht: s.isYacht,
+      isCasaOS: s.isCasaOS,
+      url: "REDACTED (Login to view)" 
+  }));
+
+  return NextResponse.json(sanitized);
 }
 
 export async function PUT(request: Request) {
@@ -25,6 +51,10 @@ export async function PUT(request: Request) {
 
     if (!id || !url) {
         return NextResponse.json({ error: 'ID and URL are required' }, { status: 400 });
+    }
+
+    if (!isSafeUrl(url)) {
+        return NextResponse.json({ error: 'Invalid or unsafe URL' }, { status: 400 });
     }
 
     const sources = getSources();
@@ -73,6 +103,10 @@ export async function POST(request: Request) {
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+    }
+
+    if (!isSafeUrl(url)) {
+      return NextResponse.json({ error: 'Invalid or unsafe URL' }, { status: 400 });
     }
 
     const type = url.endsWith('.zip') ? 'zip' : 'json';

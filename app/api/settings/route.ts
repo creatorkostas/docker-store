@@ -5,7 +5,25 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   const settings = getSettings();
-  return NextResponse.json(settings);
+  
+  let isAuthenticated = false;
+  if (process.env.DEBUG === "true") {
+      isAuthenticated = true;
+  } else {
+      const session = await getServerSession(authOptions);
+      if (session) isAuthenticated = true;
+  }
+
+  if (isAuthenticated) {
+      return NextResponse.json(settings);
+  }
+
+  // Guest view: Mask sensitive configuration
+  return NextResponse.json({
+      ...settings,
+      serverDownloadPath: "REDACTED",
+      yacht: {} // Hide potentially sensitive default env vars
+  });
 }
 
 export async function POST(request: Request) {

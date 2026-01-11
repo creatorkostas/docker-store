@@ -7,6 +7,8 @@ import { Source, App } from './types';
 import { updateSource } from './sources';
 import { getSettings } from './settings';
 
+import { isSafeUrl } from './utils';
+
 const STORAGE_DIR = path.join(process.cwd(), 'public', 'storage');
 
 // Ensure storage directory exists
@@ -15,6 +17,19 @@ if (!fs.existsSync(STORAGE_DIR)) {
 }
 
 export async function processSource(source: Source): Promise<void> {
+  // Validate URL to prevent SSRF
+  if (!isSafeUrl(source.url)) {
+      const errorMsg = `Invalid or unsafe URL: ${source.url}`;
+      console.error(errorMsg);
+      updateSource({
+        ...source,
+        lastUpdated: new Date().toISOString(),
+        status: 'error',
+        error: errorMsg,
+      });
+      return;
+  }
+
   try {
     if (source.type === 'zip') {
       await processZipSource(source);
@@ -47,6 +62,13 @@ async function processZipSource(source: Source) {
   if (!response.ok) throw new Error(`Failed to download ZIP: ${response.statusText}`);
 
   const arrayBuffer = await response.arrayBuffer();
+  
+  // DoS Protection: Limit file size to 50MB
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  if (arrayBuffer.byteLength > MAX_SIZE) {
+      throw new Error(`File too large. Max size is ${MAX_SIZE / 1024 / 1024}MB`);
+  }
+
   const buffer = Buffer.from(arrayBuffer);
   const zip = new AdmZip(buffer);
 
@@ -60,7 +82,28 @@ async function processZipSource(source: Source) {
   if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
 
-  zip.extractAllTo(tempDir, true);
+  // Secure extraction to prevent Zip Slip
+  zip.getEntries().forEach((entry) => {
+    const entryName = entry.entryName;
+    const destination = path.join(tempDir, entryName);
+    
+    // Security check: Ensure the resolved path is within the target directory
+    const relative = path.relative(tempDir, destination);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      console.warn(`Skipping potentially unsafe zip entry: ${entryName}`);
+      return;
+    }
+
+    if (entry.isDirectory) {
+        fs.mkdirSync(destination, { recursive: true });
+    } else {
+        const parent = path.dirname(destination);
+        if (!fs.existsSync(parent)) {
+            fs.mkdirSync(parent, { recursive: true });
+        }
+        fs.writeFileSync(destination, entry.getData());
+    }
+  });
 
   // Find "Apps" folder
   let appsDir = path.join(tempDir, 'Apps');

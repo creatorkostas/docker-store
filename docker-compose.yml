@@ -10,7 +10,13 @@ services:
     environment:
       - NODE_ENV=production
       - SERVER_DOWNLOAD_PATH=/app/server_downloads
-      - DEBUG=true
+      - DEBUG=false
+      - SKIP_SSL_VERIFICATION=true
+      - AUTHENTIK_CLIENT_ID=
+      - AUTHENTIK_CLIENT_SECRET=
+      - AUTHENTIK_ISSUER=
+      - NEXTAUTH_SECRET=
+      - NEXTAUTH_URL=http://localhost:3000
       # Add other environment variables here if needed (e.g. AUTH_SECRET, GITHUB_ID, etc)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

@@ -15,6 +15,7 @@ RUN npm ci --legacy-peer-deps
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+# Force cache invalidation - 2026-01-11
 COPY . .
 
 # Disable telemetry during the build
